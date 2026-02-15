@@ -80,7 +80,21 @@ function draw() {
 
   for (let i = 0; i < countries.length; i++) {
     updateCountryPosition(i);
+  }
+
+  for (let i = 0; i < countries.length; i++) {
+    if (i === hoveredIndex || i === selectedIndex) {
+      continue;
+    }
     drawCountryCircle(i);
+  }
+
+  if (hoveredIndex !== -1 && hoveredIndex !== selectedIndex) {
+    drawCountryCircle(hoveredIndex);
+  }
+
+  if (selectedIndex !== -1) {
+    drawCountryCircle(selectedIndex);
   }
 
   if (selectedIndex === -1) {
@@ -97,7 +111,8 @@ function buildCountries() {
   const cleaned = source
     .map((row) => ({
       country: (row["Country name"] || "").trim(),
-      score: Number(row["Ladder score"])
+      score: Number(row["Ladder score"]),
+      generosity: Number(row["Generosity"])
     }))
     .filter((row) => row.country && Number.isFinite(row.score));
 
@@ -114,6 +129,7 @@ function buildCountries() {
       index,
       country: item.country,
       score: item.score,
+      generosity: Number.isFinite(item.generosity) ? item.generosity : 0,
       baseRadius,
       currentRadius: baseRadius,
       gridX: 0,
@@ -261,12 +277,60 @@ function drawCountryCircle(i) {
   drawingContext.restore();
 
   fill(245);
+  const smileRadius = selectedIndex === i ? c.currentRadius * 0.34 : c.currentRadius * 0.28;
+  const cornerDistance = c.currentRadius * 0.78;
+  const cornerOffsets = [
+    [-1, -1],
+    [1, -1],
+    [-1, 1],
+    [1, 1]
+  ];
+  const [offsetX, offsetY] = cornerOffsets[i % cornerOffsets.length];
+  const smileX = c.x + offsetX * cornerDistance;
+  const smileY = c.y + offsetY * cornerDistance;
+
+  smileyFace(smileX, smileY, smileRadius, c.generosity > 0.2);
+
   if (selectedIndex === i) {
     textSize(30);
     text(c.country, c.x, c.y - 18);
     textSize(22);
     text(`Ladder score: ${c.score.toFixed(3)}`, c.x, c.y + 18);
   }
+}
+
+function smileyFace(x, y, size, smileOn) {
+  const faceRadius = size;
+  const mouthW = faceRadius * 1.04;
+  const mouthH = faceRadius * 0.74;
+  const eyeSize = faceRadius * 0.2;
+  const eyeOffsetX = faceRadius * 0.34;
+  const eyeY = y - faceRadius * 0.24;
+  const mouthY = y + faceRadius * 0.16;
+
+  noStroke();
+  fill("#ffea00");
+  circle(x, y, faceRadius * 2);
+
+  noFill();
+  stroke("#6f4e37");
+  strokeWeight(max(1.2, faceRadius * 0.09));
+  circle(x, y, faceRadius * 2);
+
+  noFill();
+  stroke("#6f4e37");
+  strokeWeight(max(1.1, faceRadius * 0.1));
+
+  if (smileOn) {
+    arc(x, mouthY, mouthW, mouthH, 0, PI);
+  } else {
+    arc(x, mouthY + faceRadius * 0.24, mouthW, mouthH, PI, 0);
+  }
+
+  noStroke();
+  fill("#6f4e37");
+  circle(x - eyeOffsetX, eyeY, eyeSize);
+  circle(x + eyeOffsetX, eyeY, eyeSize);
 }
 
 function drawGradientCircle(x, y, radius, colA, colB, darken) {
@@ -323,7 +387,10 @@ function mouseClicked() {
   } else if (selectedIndex === hoveredIndex) {
     selectedIndex = -1;
   } else {
-    selectedIndex = hoveredIndex;
+    const clickedCountry = countries.splice(hoveredIndex, 1)[0];
+    countries.push(clickedCountry);
+    selectedIndex = countries.length - 1;
+    hoveredIndex = selectedIndex;
   }
 }
 
@@ -333,8 +400,8 @@ function windowResized() {
 }
 
 function drawLegend() {
-  const panelW = 300;
-  const panelH = 86;
+  const panelW = 332;
+  const panelH = 156;
   const x = width - panelW - 18;
   const y = 18;
 
@@ -352,6 +419,19 @@ function drawLegend() {
   text("Hover: darkens + slight grow", x + 14, y + 14);
   text("Click: glide to center + show score", x + 14, y + 36);
   text("Click selected/empty space: reset", x + 14, y + 58);
+
+  const iconX = x + 28;
+  const happyY = y + 102;
+  const sadY = y + 130;
+
+  smileyFace(iconX, happyY, 10, true);
+  smileyFace(iconX, sadY, 10, false);
+
+  fill(240);
+  textSize(12);
+  textAlign(LEFT, CENTER);
+  text("Generosity > 0.2", x + 48, happyY);
+  text("Generosity ≤ 0.2", x + 48, sadY);
   textAlign(CENTER, CENTER);
 }
 
