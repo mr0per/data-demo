@@ -138,9 +138,10 @@ function computeGridLayout() {
   const availableWidth = max(200, width - margin * 2);
   const availableHeight = max(200, height - margin * 2);
 
-  const columns = max(
-    1,
-    ceil(sqrt((countries.length * availableWidth) / availableHeight))
+  const columns = getBestColumnCount(
+    countries.length,
+    availableWidth,
+    availableHeight
   );
   const rows = ceil(countries.length / columns);
 
@@ -161,8 +162,8 @@ function computeGridLayout() {
     );
   }
 
-  const gridWidth = columns * cellSize;
-  const gridHeight = rows * cellSize;
+  const gridWidth = columns * cellW;
+  const gridHeight = rows * cellH;
 
   const startX = margin;
   const startY = margin;
@@ -171,8 +172,8 @@ function computeGridLayout() {
     const col = i % columns;
     const row = floor(i / columns);
 
-    const x = startX + col * cellSize + cellSize / 2;
-    const y = startY + row * cellSize + cellSize / 2;
+    const x = startX + col * cellW + cellW / 2;
+    const y = startY + row * cellH + cellH / 2;
 
     countries[i].gridX = x;
     countries[i].gridY = y;
@@ -191,6 +192,29 @@ function computeGridLayout() {
   if (neededWidth > width || neededHeight > height) {
     resizeCanvas(max(width, neededWidth), max(height, neededHeight));
   }
+}
+
+function getBestColumnCount(totalItems, availableWidth, availableHeight) {
+  const targetAspect = availableWidth / availableHeight;
+  let bestColumns = 1;
+  let bestScore = Infinity;
+
+  for (let columns = 1; columns <= totalItems; columns++) {
+    const rows = ceil(totalItems / columns);
+    const emptySlots = columns * rows - totalItems;
+    const gridAspect = columns / rows;
+
+    const aspectPenalty = abs(gridAspect - targetAspect);
+    const emptyPenalty = emptySlots / totalItems;
+    const score = aspectPenalty * 1.5 + emptyPenalty * 2;
+
+    if (score < bestScore) {
+      bestScore = score;
+      bestColumns = columns;
+    }
+  }
+
+  return bestColumns;
 }
 
 function updateHoverState() {
